@@ -1,0 +1,56 @@
+# Copyright 2025 Farfetch
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# 	 http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+ARG PLUGIN=velero-plugin-artifactory
+
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS build
+
+ARG PLUGIN
+ARG REPOSITORY=Farfetch
+ARG PKG=github.com/Farfetch/velero-plugin-artifactory
+ARG VERSION=0.0.0
+ARG GIT_SHA=nil
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+
+ARG GOOS=linux
+ARG GOARCH=amd64
+
+ENV GOOS=${TARGETOS}
+ENV GOARCH=${TARGETARCH}
+ENV GOARM=${TARGETVARIANT}
+
+ENV GOPROXY=https://proxy.golang.org
+
+WORKDIR /go/src/github.com/${REPOSITORY}/${PLUGIN}
+COPY . .
+SHELL ["/bin/bash","-eu","-o","pipefail","-c"]
+RUN <<EOF
+  LDFLAGS="-X ${PKG}/src/utils.Version=${VERSION} -X ${PKG}/src/utils.GitSHA=${GIT_SHA}"
+  export LDFLAGS
+  GOARM=$( echo "${GOARM}" | cut -c2-)
+  export GOARM
+  CGO_ENABLED=0 go build -o /go/bin/${PLUGIN} .
+EOF
+
+FROM busybox:1.33.1 AS busybox
+
+FROM scratch
+ARG PLUGIN
+COPY --from=build /go/bin/${PLUGIN} /plugins/
+COPY --from=busybox /bin/cp /bin/cp
+USER 65532:65532
+ENTRYPOINT ["cp", "-rT", "/plugins/", "/target/"]

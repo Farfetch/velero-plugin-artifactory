@@ -1,0 +1,21 @@
+services:
+  artifactory:
+    image: releases-docker.jfrog.io/jfrog/artifactory-oss:${ARTIFACTORY_VERSION}
+    container_name: artifactory
+    user: 1001:118 # needed for github actions to work properly, doesn't have an impact locally
+    ports:
+      - 8081:8081
+      - 8082:8082
+    volumes:
+      - ./artifactory/var/:/var/opt/jfrog/artifactory
+    restart: always
+  postgres:
+    image: library/postgres:16.8
+    container_name: postgresql
+    environment:
+      - POSTGRES_DB=artifactorydb
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - 5432:5432
+    restart: always
