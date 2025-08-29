@@ -17,9 +17,9 @@ limitations under the License.
 package plugin
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -236,12 +236,15 @@ func (f *ObjectStore) ObjectExists(bucket, key string) (bool, error) {
 		return false, err
 	}
 	length, err := reader.Length()
-	if length == 0 {
-		log.Error("No object found.")
+	if err != nil {
+		log.Error("Error getting search length.")
 		return false, err
 	}
+	if length == 0 {
+		return false, nil
+	}
 	defer reader.Close()
-	return true, err
+	return true, nil
 }
 
 // GetObject retrieves the object with the given key from the specified
@@ -389,5 +392,23 @@ func (f *ObjectStore) CreateSignedURL(bucket, key string, ttl time.Duration) (st
 		"key":    key,
 	})
 	log.Infof("CreateSignedURL")
-	return "", errors.New("CreateSignedURL is not supported for this plugin")
+
+	jconfig := f.rtManager.GetConfig().GetServiceDetails()
+
+	cred := ""
+	if jconfig.GetPassword() != "" {
+		cred = jconfig.GetPassword()
+	}
+	if jconfig.GetApiKey() != "" {
+		cred = jconfig.GetApiKey()
+	}
+	if jconfig.GetAccessToken() != "" {
+		cred = jconfig.GetAccessToken()
+	}
+	u, err := url.Parse(jconfig.GetUrl())
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("https://%s:%s@%s%s%s/%s", url.QueryEscape(jconfig.GetUser()), url.QueryEscape(cred), u.Host, u.Path, bucket, key), nil
 }

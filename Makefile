@@ -27,6 +27,9 @@ GOARCH ?= $(shell go env GOARCH)
 
 ARTIFACTORY_VERSION ?= 7.111.9
 
+UID ?= $(shell id -u)
+GID ?= $(shell id -g)
+
 # builds the binary using 'go build' in the local environment.
 .PHONY: build
 build: build-dirs
@@ -46,7 +49,7 @@ setup-arti:
 	@echo ""
 	mkdir -p ./tests/artifactory/var/etc/
 	envsubst < ./tests/system.yaml > ./tests/artifactory/var/etc/system.yaml
-	docker compose -f tests/docker-compose.yaml -p local_arti_tests up -d
+	UID=${UID} GID=${GID} docker compose -f tests/docker-compose.yaml -p local_arti_tests up -d
 	@echo ""
 	@echo "======================================================================"
 	@echo " ⏰  Waiting for Artifactory to be up"
