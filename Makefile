@@ -55,7 +55,7 @@ setup-arti:
 	@echo " ⏰  Waiting for Artifactory to be up"
 	@echo "======================================================================"
 	@echo ""
-	timeout 300 bash -c 'while [[ "$$(curl -s -o /dev/null -w ''%{http_code}'' 127.0.0.1:8082/router/api/v1/system/health)" != "200" ]]; do sleep 5; done' || false
+	timeout 300 bash -c 'while [[ "$$(curl -s -o /dev/null -w ''%{http_code}'' 127.0.0.1:8082/router/api/v1/system/health)" != "200" ]]; do docker logs artifactory --tail 10; sleep 5; done' || false
 
 # test runs unit tests using 'go test' in the local environment.
 .PHONY: test
