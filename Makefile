@@ -27,6 +27,9 @@ GOARCH ?= $(shell go env GOARCH)
 
 ARTIFACTORY_VERSION ?= 7.111.9
 
+UID=$(id -u)
+GID=$(id -g)
+
 # builds the binary using 'go build' in the local environment.
 .PHONY: build
 build: build-dirs
