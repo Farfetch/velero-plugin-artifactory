@@ -236,12 +236,15 @@ func (f *ObjectStore) ObjectExists(bucket, key string) (bool, error) {
 		return false, err
 	}
 	length, err := reader.Length()
-	if length == 0 {
-		log.Error("No object found.")
+	if err != nil {
+		log.Error("Error getting search length.")
 		return false, err
 	}
+	if length == 0 {
+		return false, nil
+	}
 	defer reader.Close()
-	return true, err
+	return true, nil
 }
 
 // GetObject retrieves the object with the given key from the specified
