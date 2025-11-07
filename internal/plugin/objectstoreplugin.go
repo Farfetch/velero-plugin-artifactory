@@ -38,13 +38,14 @@ import (
 type ObjectStore struct {
 	rtManager   artifactory.ArtifactoryServicesManager
 	labels      string
+	properties  *utils.Properties
 	scratchPath string
 	log         logrus.FieldLogger
 }
 
 // NewObjectStore instantiates a ObjectStore.
 func NewObjectStore(log logrus.FieldLogger) *ObjectStore {
-	return &ObjectStore{scratchPath: "/tmp/backups", log: log}
+	return &ObjectStore{properties: utils.NewProperties(), scratchPath: "/tmp/backups", log: log}
 }
 
 // Init prepares the ObjectStore for usage using the provided map of
@@ -60,6 +61,13 @@ func (f *ObjectStore) Init(config map[string]string) error {
 
 	// setup labels
 	f.labels = config["labels"]
+	if f.labels != "" {
+		labels := strings.SplitSeq(f.labels, ";")
+		for label := range labels {
+			label_kv := strings.Split(label, "=")
+			f.properties.AddProperty(label_kv[0], label_kv[1])
+		}
+	}
 
 	// login to arti
 	rtDetails := auth.NewArtifactoryDetails()
@@ -193,16 +201,8 @@ func (f *ObjectStore) PutObject(bucket string, key string, body io.Reader) error
 	params.Flat = true
 	// Set to true to extract an archive after it is deployed to Artifactory.
 	params.ExplodeArchive = false
-
-	if f.labels != "" {
-		targetProps := utils.NewProperties()
-		labels := strings.SplitSeq(f.labels, ";")
-		for label := range labels {
-			label_kv := strings.Split(label, "=")
-			targetProps.AddProperty(label_kv[0], label_kv[1])
-		}
-		params.TargetProps = targetProps
-	}
+	// Add properties to the archive (only labels by default)
+	params.TargetProps = f.properties
 
 	uploadServiceOptions := artifactory.UploadServiceOptions{
 		// Set to true to fail the upload operation if any of the files fail to upload
