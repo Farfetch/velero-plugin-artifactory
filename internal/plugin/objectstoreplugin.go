@@ -35,17 +35,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defaultRoot = "/tmp/backups"
-
 type ObjectStore struct {
-	rtManager artifactory.ArtifactoryServicesManager
-	labels    string
-	log       logrus.FieldLogger
+	rtManager   artifactory.ArtifactoryServicesManager
+	labels      string
+	scratchPath string
+	log         logrus.FieldLogger
 }
 
 // NewObjectStore instantiates a ObjectStore.
 func NewObjectStore(log logrus.FieldLogger) *ObjectStore {
-	return &ObjectStore{log: log}
+	return &ObjectStore{scratchPath: "/tmp/backups", log: log}
 }
 
 // Init prepares the ObjectStore for usage using the provided map of
@@ -53,6 +52,11 @@ func NewObjectStore(log logrus.FieldLogger) *ObjectStore {
 // cannot be initialized from the provided config.
 func (f *ObjectStore) Init(config map[string]string) error {
 	f.log.Infof("ObjectStore.Init called")
+
+	// overwrite default scratch space for upload/download of files
+	if config["scratch_path"] != "" {
+		f.scratchPath = config["scratch_path"]
+	}
 
 	// setup labels
 	f.labels = config["labels"]
@@ -136,7 +140,7 @@ func (f *ObjectStore) Init(config map[string]string) error {
 // object storage bucket with the given key.
 func (f *ObjectStore) PutObject(bucket string, key string, body io.Reader) error {
 	// Create file to upload
-	path := filepath.Join(defaultRoot, bucket, key)
+	path := filepath.Join(f.scratchPath, bucket, key)
 
 	log := f.log.WithFields(logrus.Fields{
 		"repository": bucket,
@@ -255,7 +259,7 @@ func (f *ObjectStore) GetObject(bucket, key string) (io.ReadCloser, error) {
 		"key":    key,
 	})
 	log.Infof("GetObject")
-	path := filepath.Join(defaultRoot, bucket, key)
+	path := filepath.Join(f.scratchPath, bucket, key)
 
 	// download from arti
 	params := services.NewDownloadParams()

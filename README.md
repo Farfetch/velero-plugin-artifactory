@@ -43,6 +43,7 @@ spec:
     url: https://example.com/artifactory
     user: backup-user
     # optional
+    scratch_path: /tmp/backups # scratch space for upload/download data
     labels: label1=label;label2=another-label;label3=third label
   default: true
   objectStorage:
