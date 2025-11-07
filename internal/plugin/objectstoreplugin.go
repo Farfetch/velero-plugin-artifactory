@@ -324,16 +324,29 @@ func (f *ObjectStore) ListCommonPrefixes(bucket, prefix, delimiter string) ([]st
 
 	// Iterate over the results.
 	var objectsList []string
+	// Example1: bucket: kontractor-backups; prefix: backups/example; delimiter: /
+	// Example2: bucket: kontractor-backups; prefix: backups/; delimiter: /
 	for currentResult := new(utils.ResultItem); reader.NextRecord(currentResult) == nil; currentResult = new(utils.ResultItem) {
+		// artifact1: kontractor-backups/backups/example/example.gz
+		// artifact2: kontractor-backups/backups/example/example.gz
 		artifact := fmt.Sprintf("%s/%s/%s", currentResult.Repo, currentResult.Path, currentResult.Name)
+		// beginningS1: kontractor-backups/backups/example/
+		// beginningS2: kontractor-backups/backups/
 		beginningS := fmt.Sprintf("%s/%s", bucket, prefix)
 
 		// remove bucket + prefix from result path
+		// subKey1: example.gz
+		// subKey2: example/example.gz
 		subKey := artifact[len(beginningS):]
+		// delimited1: [example.gz]
+		// delimited2: [example, example.gz]
 		delimited := strings.Split(subKey, delimiter)
 
 		// object = prefix + first split until delimiter + delimiter
+		// object1: backups/example/example.gz/
+		// object2: backups/example/
 		object := fmt.Sprintf("%s%s%s", prefix, delimited[0], delimiter)
+
 		// append only if not exists
 		if !slices.Contains(objectsList, object) {
 			objectsList = append(objectsList, object)
