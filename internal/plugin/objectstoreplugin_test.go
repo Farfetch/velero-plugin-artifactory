@@ -35,6 +35,7 @@ var testConfig = map[string]string{
 	"bucket":       os.Getenv("BUCKET"),
 	"key":          os.Getenv("KEY"),
 	"testFilePath": os.Getenv("TEST_FILE_PATH"),
+	"labels":       "label1=label;label2=another-label;label3=third label",
 	"scratchPath":  "/tmp/backups",
 }
 
