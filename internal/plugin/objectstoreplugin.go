@@ -35,17 +35,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defaultRoot = "/tmp/backups"
-
 type ObjectStore struct {
-	rtManager artifactory.ArtifactoryServicesManager
-	labels    string
-	log       logrus.FieldLogger
+	rtManager   artifactory.ArtifactoryServicesManager
+	labels      string
+	scratchPath string
+	log         logrus.FieldLogger
 }
 
 // NewObjectStore instantiates a ObjectStore.
 func NewObjectStore(log logrus.FieldLogger) *ObjectStore {
-	return &ObjectStore{log: log}
+	return &ObjectStore{scratchPath: "/tmp/backups", log: log}
 }
 
 // Init prepares the ObjectStore for usage using the provided map of
@@ -53,6 +52,11 @@ func NewObjectStore(log logrus.FieldLogger) *ObjectStore {
 // cannot be initialized from the provided config.
 func (f *ObjectStore) Init(config map[string]string) error {
 	f.log.Infof("ObjectStore.Init called")
+
+	// overwrite default scratch space for upload/download of files
+	if config["scratch_path"] != "" {
+		f.scratchPath = config["scratch_path"]
+	}
 
 	// setup labels
 	f.labels = config["labels"]
@@ -136,7 +140,7 @@ func (f *ObjectStore) Init(config map[string]string) error {
 // object storage bucket with the given key.
 func (f *ObjectStore) PutObject(bucket string, key string, body io.Reader) error {
 	// Create file to upload
-	path := filepath.Join(defaultRoot, bucket, key)
+	path := filepath.Join(f.scratchPath, bucket, key)
 
 	log := f.log.WithFields(logrus.Fields{
 		"repository": bucket,
@@ -255,7 +259,7 @@ func (f *ObjectStore) GetObject(bucket, key string) (io.ReadCloser, error) {
 		"key":    key,
 	})
 	log.Infof("GetObject")
-	path := filepath.Join(defaultRoot, bucket, key)
+	path := filepath.Join(f.scratchPath, bucket, key)
 
 	// download from arti
 	params := services.NewDownloadParams()
@@ -320,16 +324,29 @@ func (f *ObjectStore) ListCommonPrefixes(bucket, prefix, delimiter string) ([]st
 
 	// Iterate over the results.
 	var objectsList []string
+	// Example1: bucket: kontractor-backups; prefix: backups/example; delimiter: /
+	// Example2: bucket: kontractor-backups; prefix: backups/; delimiter: /
 	for currentResult := new(utils.ResultItem); reader.NextRecord(currentResult) == nil; currentResult = new(utils.ResultItem) {
+		// artifact1: kontractor-backups/backups/example/example.gz
+		// artifact2: kontractor-backups/backups/example/example.gz
 		artifact := fmt.Sprintf("%s/%s/%s", currentResult.Repo, currentResult.Path, currentResult.Name)
+		// beginningS1: kontractor-backups/backups/example/
+		// beginningS2: kontractor-backups/backups/
 		beginningS := fmt.Sprintf("%s/%s", bucket, prefix)
 
 		// remove bucket + prefix from result path
+		// subKey1: example.gz
+		// subKey2: example/example.gz
 		subKey := artifact[len(beginningS):]
+		// delimited1: [example.gz]
+		// delimited2: [example, example.gz]
 		delimited := strings.Split(subKey, delimiter)
 
 		// object = prefix + first split until delimiter + delimiter
+		// object1: backups/example/example.gz/
+		// object2: backups/example/
 		object := fmt.Sprintf("%s%s%s", prefix, delimited[0], delimiter)
+
 		// append only if not exists
 		if !slices.Contains(objectsList, object) {
 			objectsList = append(objectsList, object)

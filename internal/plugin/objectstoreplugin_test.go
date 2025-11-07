@@ -35,6 +35,7 @@ var testConfig = map[string]string{
 	"bucket":       os.Getenv("BUCKET"),
 	"key":          os.Getenv("KEY"),
 	"testFilePath": os.Getenv("TEST_FILE_PATH"),
+	"scratchPath":  "/tmp/backups",
 }
 
 func artifactoryLogin(t *testing.T, objectStore *ObjectStore) {
@@ -131,7 +132,7 @@ func TestGetObject(t *testing.T) {
 		t.Error(err)
 	}
 
-	path := filepath.Join(defaultRoot, testConfig["bucket"], testConfig["key"])
+	path := filepath.Join(testConfig["scratchPath"], testConfig["bucket"], testConfig["key"])
 	outputPath := path + "-output"
 	fd, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
